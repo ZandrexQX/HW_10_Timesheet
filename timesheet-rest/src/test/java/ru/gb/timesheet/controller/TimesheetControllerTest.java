@@ -9,6 +9,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import ru.gb.timesheet.model.Timesheet;
 import ru.gb.timesheet.repository.TimesheetRepository;
@@ -38,15 +39,16 @@ class TimesheetControllerTest {
     @Test
     void getByIdNotFound() {
         // GET /timesheets/{id}
-        ResponseEntity<Void> response = restClient.get()
-                .uri("/projects/999")
-                .retrieve()
-                .toBodilessEntity(); // less
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertThrows(HttpClientErrorException.NotFound.class, () -> {
+            restClient.get()
+                    .uri("/timesheets/-2")
+                    .retrieve()
+                    .toBodilessEntity();
+        });
     }
 
     @Test
-    void getByIdAllOk() {
+    void getById() {
         // given
         Timesheet timesheet = new Timesheet();
         LocalDate createdAt = LocalDate.now();
@@ -74,10 +76,26 @@ class TimesheetControllerTest {
     }
 
     @Test
+    void testGetAll() {
+        // GET /timesheets
+        ResponseEntity<Timesheet[]> response = restClient.get()
+                .uri("/timesheets")
+                .retrieve()
+                .toEntity(Timesheet[].class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        Timesheet[] responseBody = response.getBody();
+        assertNotNull(responseBody);
+        assertTrue(responseBody.length > 0);
+    }
+
+    @Test
     void testCreate() {
         // POST /timesheets
         Timesheet toCreate = new Timesheet();
-        toCreate.setId(1000L);
+        LocalDate createdAt = LocalDate.now();
+        toCreate.setProjectId(ThreadLocalRandom.current().nextLong(1, 6));
+        toCreate.setCreatedAt(createdAt);
+        toCreate.setMinutes(ThreadLocalRandom.current().nextInt(100, 1000));
 
         ResponseEntity<Timesheet> response = restClient.post()
                 .uri("/timesheets")
@@ -85,15 +103,14 @@ class TimesheetControllerTest {
                 .retrieve()
                 .toEntity(Timesheet.class);
 
-        // Проверяем HTTP-ручку сервера
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         Timesheet responseBody = response.getBody();
         assertNotNull(responseBody);
         assertNotNull(responseBody.getId());
+        assertEquals(toCreate.getProjectId(), responseBody.getProjectId());
+        assertEquals(toCreate.getMinutes(), responseBody.getMinutes());
 
-        // Проверяем, что запись в БД есть
         assertTrue(timesheetRepo.existsById(responseBody.getId()));
-
     }
 
     @Test
@@ -106,7 +123,7 @@ class TimesheetControllerTest {
         ResponseEntity<Void> response = restClient.delete()
                 .uri("/timesheets/" + toDelete.getId())
                 .retrieve()
-                .toBodilessEntity(); // less
+                .toBodilessEntity();
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
 
         // Проверяем, что запись в БД НЕТ
@@ -116,20 +133,27 @@ class TimesheetControllerTest {
     @Test
     void testUpdate() {
         // PUT /timesheets
+
         Timesheet toUpdate = new Timesheet();
-        toUpdate.setId(3000L);
+        toUpdate.setProjectId(ThreadLocalRandom.current().nextLong(1, 6));
+        toUpdate.setMinutes(ThreadLocalRandom.current().nextInt(100, 1000));
         toUpdate = timesheetRepo.save(toUpdate);
-        toUpdate.setMinutes(999);
+        toUpdate.setMinutes(2000);
+
         ResponseEntity<Timesheet> response = restClient.put()
                 .uri("/timesheets/" + toUpdate.getId())
                 .body(toUpdate)
                 .retrieve()
                 .toEntity(Timesheet.class);
+
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Timesheet responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(toUpdate.getId(), responseBody.getId());
+        assertEquals(toUpdate.getProjectId(), responseBody.getProjectId());
         assertEquals(toUpdate.getMinutes(), responseBody.getMinutes());
+
+
     }
 
 }

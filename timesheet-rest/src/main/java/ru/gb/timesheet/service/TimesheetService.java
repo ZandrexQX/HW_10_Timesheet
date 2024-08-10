@@ -47,15 +47,15 @@ public class TimesheetService {
   }
 
   public Timesheet create(Timesheet timesheet) {
-    if (Objects.isNull(timesheet.getProjectId())) {
-      throw new IllegalArgumentException("projectId must not be null");
-    }
-
-    if (projectRepository.findById(timesheet.getProjectId()).isEmpty()) {
-      throw new NoSuchElementException("Project with id " + timesheet.getProjectId() + " does not exists");
-    }
-
-    timesheet.setCreatedAt(LocalDate.now());
+//    if (Objects.isNull(timesheet.getProjectId())) {
+//      throw new IllegalArgumentException("projectId must not be null");
+//    }
+//
+//    if (projectRepository.findById(timesheet.getProjectId()).isEmpty()) {
+//      throw new NoSuchElementException("Project with id " + timesheet.getProjectId() + " does not exists");
+//    }
+//
+//    timesheet.setCreatedAt(LocalDate.now());
     return timesheetRepository.save(timesheet);
   }
 
@@ -64,4 +64,8 @@ public class TimesheetService {
     timesheetRepository.deleteById(id);
   }
 
+  public Timesheet update(Long id, Timesheet timesheet) {
+    timesheet.setId(id);
+    return timesheetRepository.save(timesheet);
+  }
 }
